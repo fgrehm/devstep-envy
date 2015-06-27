@@ -71,8 +71,13 @@ ssh MY_GH_USER+github.com/SOME_USER/PROJECT@devstep-envy.host
 **Coming soon...**
 
 ```sh
-docker-machine create --driver digitalocean --digitalocean-access-token YOUR_TOKEN envy
+docker-machine create --driver digitalocean \
+                      --digitalocean-access-token YOUR_TOKEN \
+                      --digitalocean-size "1gb" \
+                      envy
+
 eval $(docker-machine env envy)
+
 docker run --rm \
            -e SSH_PORT=2222 \
            -e HOST_DIR=/var/data/envy \
