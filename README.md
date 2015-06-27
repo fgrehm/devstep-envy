@@ -54,7 +54,7 @@ Development environments can be accessed using SSH or from a browser. In additio
 to Envy's (current) core functionality, this project provides support for building
 environments based on GitHub projects and it leverages a Devstep's image for
 automatic detection of projects dependencies (much like Heroku's "`git push`
-+ buildpacks experience").
+experience").
 
 _Building Envy environments based on GitHub projects [is planned](https://github.com/progrium/envy/issues/19)
 and the way things are implemented right now are based around that_
@@ -67,6 +67,8 @@ ssh MY_GH_USER+github.com/SOME_USER/PROJECT@devstep-envy.host
 ```
 
 ## Up and running on a DigitalOcean Droplet in less than 10 minutes
+
+**Coming soon...**
 
 ```sh
 docker-machine create --driver digitalocean --digitalocean-access-token YOUR_TOKEN envy
