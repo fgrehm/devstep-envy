@@ -37,7 +37,11 @@ A Linux machine with [Docker](https://www.docker.com/) installed.
 
 ## Installation
 
-_:warning: This is **very** experimental, expect things to break :warning:_
+_:warning: This is **very** experimental, expect things to break, not only Envy
+is on its early days but Devstep has been working fine for my needs and it doesn't
+mean it will work fine of **all** projects, some manual steps might be required to
+make things work. Please create an issue in case you have trouble setting up a
+project :warning:_
 
 ```sh
 git clone https://github.com/fgrehm/devstep-envy && cd devstep-envy
