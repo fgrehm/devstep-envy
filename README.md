@@ -41,7 +41,7 @@ _:warning: This is **very** experimental, expect things to break :warning:_
 
 ```sh
 git clone https://github.com/fgrehm/devstep-envy && cd devstep-envy
-SSH_PORT=1234 make install
+make SSH_PORT=1234 install
 ```
 
 ## Usage
@@ -61,6 +61,30 @@ or:
 ```sh
 ssh MY_GH_USER+github.com/SOME_USER/PROJECT@devstep-envy.host
 ```
+
+## Up and running on a DigitalOcean Droplet in less than 10 minutes
+
+```sh
+docker-machine create --driver digitalocean --digitalocean-access-token YOUR_TOKEN envy
+eval $(docker-machine env envy)
+docker run --rm \
+           -e SSH_PORT=2222 \
+           -e HOST_DIR=/var/data/envy \
+           -v /var/run/docker.sock:/var/run/docker.sock \
+           --entrypoint /ops/installer \
+           /fgrehm/devstep-envy
+```
+
+Create a basic environment as a quick sanity check:
+
+```sh
+ssh -p 2222 MY_GITHUB_USER@$(docker-machine inspect -f '{{.Driver.IPAddress}}' envy 2>&1)
+```
+
+If all went well, you should be dropped into a basic Envy container ready for use.
+Now that everything is set up, just keep the machine IP address around and hack
+away!
+
 
 ## Development
 
