@@ -57,5 +57,30 @@ func main() {
 			return pty
 		})
 	})
+	http.HandleFunc("/gh/", func(w http.ResponseWriter, r *http.Request) {
+		user, passwd, ok := r.BasicAuth()
+		if !ok || !githubAuth(user, passwd) {
+			w.Header().Set("WWW-Authenticate", fmt.Sprintf("Basic realm=\"%s\"", user))
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		parts := strings.Split(r.URL.Path, "/")
+		if len(parts) < 4 {
+			http.NotFound(w, r)
+			return
+		}
+		sshUser := user + "+github.com/" + parts[2] + "/" + parts[3]
+		w.Header().Set("Hterm-Title", "Envy Term")
+		hterm.Handle(w, r, func(args string) *hterm.Pty {
+			cmd := exec.Command("/bin/enterenv", parts[2])
+			cmd.Env = os.Environ()
+			cmd.Env = append(cmd.Env, fmt.Sprintf("USER=%s", sshUser))
+			pty, err := hterm.NewPty(cmd)
+			if err != nil {
+				log.Fatal(err)
+			}
+			return pty
+		})
+	})
 	log.Fatal(http.ListenAndServe(":80", nil))
 }
