@@ -34,6 +34,21 @@ ENV_IMAGE="$USER/$ENV"
 ENV_ROOT="$USER_ROOT/envs/$ENV"
 DIND_CONTAINER_NAME="$USER.$ENV"
 
+# This is where Devstep's changes come in
+PROJECT_MAPPING=''
+BUILD_DIR='.'
+DOCKERFILE='Dockerfile'
+GIT_URL=''
+if [[ $ENV =~ 'github.com' ]]; then
+  GIT_URL="https://${ENV}.git"
+  ENV=$(echo $ENV | sed 's|/|-|g' | sed 's|github.com|gh|')
+  ENV_IMAGE="$USER/$ENV"
+  ENV_ROOT="$USER_ROOT/envs/$ENV"
+  DIND_CONTAINER_NAME="$USER.$ENV"
+  DOCKERFILE='./code/.Dockerfile.devstep'
+  BUILD_DIR='./code'
+fi
+
 data-init() {
   mkdir -p /data/users
   cp /bin/envcmd /data/.envcmd
@@ -56,11 +71,17 @@ env-init() {
   if [[ ! -d "$ENV_ROOT" ]]; then
     cp -R /tmp/data/env "$ENV_ROOT"
   fi
+
+  if [[ ! -d $ENV_ROOT/code ]] && [[ -n $GIT_URL ]]; then
+    git clone $GIT_URL $ENV_ROOT/code
+    cp $ENV_ROOT/Dockerfile.devstep $ENV_ROOT/code/.Dockerfile.devstep
+  fi
+
   env-docker
   cd "$ENV_ROOT"
   if ! docker history $ENV_IMAGE &> /dev/null; then
     echo "Building environment ... "
-    docker build -t $ENV_IMAGE . &> /dev/null
+    docker build -t $ENV_IMAGE -f $DOCKERFILE $BUILD_DIR &> /dev/null
   fi
 }
 
@@ -86,7 +107,7 @@ env-session() {
       read cmd args <<< "$(cat $USER_ROOT/root/$session)"
       case "$cmd" in
       *rebuild)
-        docker build -t "$ENV_IMAGE" .
+        docker build -t "$ENV_IMAGE" -f $DOCKERFILE $BUILD_DIR
         ;;
       *switch)
         echo "Switching to $args ... "

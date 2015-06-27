@@ -1,0 +1,9 @@
+FROM fgrehm/devstep:v0.4.0
+
+LABEL envy=true
+# Always clean up after ourselves
+ENV CLEANUP=1
+COPY . /env/code
+WORKDIR /env/code
+RUN /opt/devstep/bin/build-project /env/code
+# CMD "/opt/devstep/bin/hack"
