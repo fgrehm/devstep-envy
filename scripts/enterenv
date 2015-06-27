@@ -89,6 +89,7 @@ env-docker() {
   mkdir -p "$ENV_ROOT/run"
   if ! docker diff $DIND_CONTAINER_NAME &> /dev/null; then
     docker run -d --privileged \
+      --label "envy" \
       --name $DIND_CONTAINER_NAME \
       --hostname "$ENV" \
       --env PORT=2375 \
@@ -123,6 +124,7 @@ env-session() {
     fi
     docker rm -f "$session" &> /dev/null
     docker run -it \
+      --label "envy" \
       --name "$session" \
       --net "container:$DIND_CONTAINER_NAME" \
       --env "HOSTNAME=$ENV" \

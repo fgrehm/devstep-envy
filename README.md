@@ -75,3 +75,11 @@ And from another terminal:
 ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -p 2222 MY_GH_USER@localhost
 ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -p 2222 MY_GH_USER+github.com/SOME_USER/PROJECT@localhost
 ```
+
+### Cleaning things up
+
+```sh
+docker rm -fv $(docker ps -qa -f 'label=envy')
+docker rmi $(docker images -q -f 'label=envy')
+sudo rm -rf /tmp/data
+```
