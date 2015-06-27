@@ -89,7 +89,7 @@ docker run --rm \
 Create a basic environment as a quick sanity check:
 
 ```sh
-ssh -p 2222 MY_GITHUB_USER@$(docker-machine inspect -f '{{.Driver.IPAddress}}' envy 2>&1)
+ssh -p 2222 MY_GITHUB_USER@$(docker-machine ip envy)
 ```
 
 If all went well, you should be dropped into a basic Envy container ready for use.
