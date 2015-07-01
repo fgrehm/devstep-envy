@@ -21,7 +21,7 @@ docker run -d --name devstep-envy \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -p 80:80 \
   -p ${SSH_PORT}:22 \
-  -e HOST_DATA \
+  -e HOST_DATA="${HOST_DATA}" \
   fgrehm/devstep-envy
 
 docker pull fgrehm/devstep-envy-project
