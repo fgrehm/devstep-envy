@@ -80,9 +80,20 @@ env-init() {
   env-docker
   cd "$ENV_ROOT"
   if ! docker history $ENV_IMAGE &> /dev/null; then
+    # HACK: For golang projects we need to keep .git around to avoid issues
+    # during build because of the way things are set up right now
+    if [[ -f $BUILD_DIR/.dockerignore ]]; then
+      sed 's|.git||g' $BUILD_DIR/.dockerignore -i.bkp
+      cp $BUILD_DIR/.dockerignore .
+    fi
+
     echo "Building environment ... "
     # docker build -t $ENV_IMAGE -f $DOCKERFILE $BUILD_DIR &> /dev/null
     docker build -t $ENV_IMAGE -f $DOCKERFILE $BUILD_DIR
+
+    if [[ -f $BUILD_DIR/.dockerignore.bkp ]]; then
+      mv $BUILD_DIR/.dockerignore{.bkp,}
+    fi
   fi
 }
 
