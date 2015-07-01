@@ -1,33 +1,21 @@
+IMAGES = images/*
+
 install:
 	@test -z '${SSH_PORT}' && { echo 'You need to provide the SSH port'; exit 1; } || true
-	docker run -d --name devstep-envy \
-		--restart="always" \
-		-v /var/data/envy:/data \
-		-v /var/run/docker.sock:/var/run/docker.sock \
-		-p 80:80 \
-		-p ${SSH_PORT}:22 \
-		-e HOST_DATA=/var/data/envy \
-		fgrehm/devstep-envy
+	./installer.sh ${SSH_PORT}
 
 reinstall:
 	@test -z '${SSH_PORT}' && { echo 'You need to provide the SSH port'; exit 1; } || true
 	docker stop devstep-envy || true
 	docker rm devstep-envy || true
-	docker run -d --name devstep-envy \
-		--restart="always" \
-		-v /var/data/envy:/data \
-		-v /var/run/docker.sock:/var/run/docker.sock \
-		-p 80:80 \
-		-p ${SSH_PORT}:22 \
-		-e HOST_DATA=/var/data/envy \
-		fgrehm/devstep-envy
+	./installer.sh ${SSH_PORT}
 
 pristine:
-	docker rm -fv $$(docker ps -qa -f 'label=envy') || true
-	docker rmi $$(docker images -q -f 'label=envy') || true
-	docker run --rm -v /var/data:/tmp/data \
+	docker rm -fv $$(docker ps -qa -f 'label=devstep-envy') || true
+	docker rmi $$(docker images -q -f 'label=devstep-envy') || true
+	docker run --rm -v /var/data/devstep-envy:/tmp/data \
 		alpine \
-		rm -rf /data/envy
+		sh -c 'rm -rf /tmp/data/* && rm -f /tmp/data/.envcmd'
 
 build:
 	docker build -t fgrehm/devstep-envy .
@@ -40,3 +28,7 @@ hack: build
 		-p 2222:22 \
 		-e HOST_DATA=/tmp/data \
 		fgrehm/devstep-envy
+
+images: $(IMAGES)
+	for dir in $(IMAGES); do ${MAKE} build -C $$dir; exit_status=$$?; \
+	if [ $$exit_status -ne 0 ]; then exit $$exit_status; fi; done
