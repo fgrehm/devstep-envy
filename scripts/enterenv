@@ -81,7 +81,8 @@ env-init() {
   cd "$ENV_ROOT"
   if ! docker history $ENV_IMAGE &> /dev/null; then
     echo "Building environment ... "
-    docker build -t $ENV_IMAGE -f $DOCKERFILE $BUILD_DIR &> /dev/null
+    # docker build -t $ENV_IMAGE -f $DOCKERFILE $BUILD_DIR &> /dev/null
+    docker build -t $ENV_IMAGE -f $DOCKERFILE $BUILD_DIR
   fi
 }
 
