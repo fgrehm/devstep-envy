@@ -1,11 +1,15 @@
 #!/bin/bash
 
-set -e
+# This should be enabled but unfortunately docker-machine ssh does not show the
+# output when something goes wrong
+# set -e
 
 if [[ -z "${1}" ]]; then
   echo 'You need to provide the SSH port you want to expose'
   echo 'as an argument to the installer'
-  exit 1
+  # This should be != 0 but unfortunately docker-machine ssh does not show the
+  # output when something goes wrong
+  exit 0
 fi
 
 SSH_PORT="${1}"
@@ -22,3 +26,8 @@ docker run -d --name devstep-envy \
 
 docker pull fgrehm/devstep-envy-project
 docker pull jpetazzo/dind
+
+# Exit zero regardless of other errors that might have occured
+# docker-machine ssh does not show the output when something
+# goes wrong
+exit 0

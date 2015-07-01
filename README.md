@@ -68,22 +68,17 @@ ssh MY_GH_USER+github.com/SOME_USER/PROJECT@devstep-envy.host
 
 ## Up and running on a DigitalOcean Droplet in less than 10 minutes
 
-**Coming soon...**
-
 ```sh
 docker-machine create --driver digitalocean \
                       --digitalocean-access-token YOUR_TOKEN \
                       --digitalocean-size "1gb" \
-                      envy
+                      devstep-envy
 
-eval $(docker-machine env envy)
+SSH_PORT='2222'
+INSTALLER='https://github.com/fgrehm/devstep-envy/raw/master/installer.sh'
+curl -L $INSTALLER | docker-machine ssh devstep-envy "bash -s $SSH_PORT"
 
-docker run --rm \
-           -e SSH_PORT=2222 \
-           -e HOST_DIR=/var/data/envy \
-           -v /var/run/docker.sock:/var/run/docker.sock \
-           --entrypoint /ops/installer \
-           /fgrehm/devstep-envy
+eval $(docker-machine env devstep-envy)
 ```
 
 Create a basic environment as a quick sanity check:
