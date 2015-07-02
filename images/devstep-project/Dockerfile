@@ -8,8 +8,9 @@ RUN sudo bash -c 'curl -sL https://get.docker.com/builds/Linux/x86_64/docker-lat
     && echo '  sudo chown developer: /env/run/docker.sock' >> $DEVSTEP_CONF/init.d/01-fix-docker-socket-permission.sh \
     && echo 'fi' >> $DEVSTEP_CONF/init.d/01-fix-docker-socket-permission.sh \
     && chmod +x $DEVSTEP_CONF/init.d/01-fix-docker-socket-permission.sh \
-    && echo "alias commit='exec sudo -E \\commit'" >> $HOME/.profile.d/docker-aliases.sh \
-    && echo "alias rebuild='exec sudo -E \\rebuild'" >> $HOME/.profile.d/docker-aliases.sh
+    && echo 'alias commit="exec sudo -E \\commit"' >> $HOME/.profile.d/docker-aliases.sh \
+    && echo 'alias rebuild="exec sudo -E \\rebuild"' >> $HOME/.profile.d/docker-aliases.sh \
+    && echo 'source /root/.bashrc' >> $HOME/.bashrc
 
 # Always clean up after ourselves
 ENV CLEANUP=1
