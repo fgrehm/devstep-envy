@@ -45,7 +45,7 @@ if [[ $ENV =~ 'github.com' ]]; then
   ENV_IMAGE="$USER/$ENV"
   ENV_ROOT="$USER_ROOT/envs/$ENV"
   DIND_CONTAINER_NAME="$USER.$ENV"
-  DOCKERFILE='./code/.Dockerfile.devstep'
+  DOCKERFILE='./code/Dockerfile.envy'
   BUILD_DIR='./code'
 fi
 
@@ -72,14 +72,16 @@ env-init() {
     cp -R /tmp/data/env "$ENV_ROOT"
   fi
 
-  if [[ ! -d $ENV_ROOT/code ]] && [[ -n $GIT_URL ]]; then
-    git clone $GIT_URL $ENV_ROOT/code
-    cp $ENV_ROOT/Dockerfile.devstep $ENV_ROOT/code/.Dockerfile.devstep
-  fi
-
   env-docker
   cd "$ENV_ROOT"
   if ! docker history $ENV_IMAGE &> /dev/null; then
+    if [[ ! -d $ENV_ROOT/code ]] && [[ -n $GIT_URL ]]; then
+      git clone $GIT_URL $ENV_ROOT/code
+      if [[ ! -f $ENV_ROOT/code/Dockerfile.envy ]]; then
+        cp $ENV_ROOT/Dockerfile.devstep $ENV_ROOT/code/Dockerfile.envy
+      fi
+    fi
+
     # HACK: For golang projects we need to keep .git around to avoid issues
     # during build because of the way things are set up right now
     if [[ -f $BUILD_DIR/.dockerignore ]]; then
