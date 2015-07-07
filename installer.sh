@@ -13,15 +13,15 @@ if [[ -z "${1}" ]]; then
 fi
 
 SSH_PORT="${1}"
-HOST_DATA="${2:-/var/data/devstep-envy}"
+HOST_ROOT="${2:-/mnt/devstep-envy}"
 
-docker run -d --name devstep-envy \
+docker run -d -t --name devstep-envy \
   --restart="always" \
   -v $HOST_DATA:/data \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -p 80:80 \
   -p ${SSH_PORT}:22 \
-  -e HOST_DATA="${HOST_DATA}" \
+  -e HOST_ROOT="${HOST_ROOT}" \
   fgrehm/devstep-envy
 
 docker pull fgrehm/devstep-envy-project

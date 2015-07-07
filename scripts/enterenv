@@ -1,114 +1,50 @@
 #!/bin/bash
 
-# A temporary varible to help checkin whether the environment has been explicitly
-# set to blank
-ENVIRONMENT_SET='0'
-if [[ "${USER:?}" =~ '+' ]]; then
-  ENVIRONMENT_SET='1'
-fi
+clean-up() {
+  if [[ -n "${LAST_SESSION}" ]]; then
+    docker stop $LAST_SESSION
+    docker rm $LAST_SESSION
+  fi
+}
+trap clean-up SIGHUP
 
-IFS="+" read USER ENV <<< "${USER}"
-
-THROWAWAY='0'
-if [ "$ENVIRONMENT_SET" = '1' ] && [ -z "$ENV" ]; then
-  THROWAWAY='1'
-fi
-ENV="${ENV:-$USER}"
-
-# There's no need for this to be around anymore from this point on
-unset ENVIRONMENT_SET
-
-# The path relative to the host Docker machine where data will be persisted, used
-# for adjusting paths when nesting containers
-HOST_DATA="${HOST_DATA:?}"
-
-# This is where users environments will be stored
-USER_ROOT="${USER_ROOT:-"/data/users/$USER"}"
-
-# Not really needed to be defined as a variable but allows for injecting its value
-# from outside (might be useful for testing purposes)
-GH_ENVY_HOME=${GH_ENVY_HOME:-"https://github.com/$USER/envy.home.git"}
-
-# The obvious ones
-ENV_IMAGE="$USER/$ENV"
-ENV_ROOT="$USER_ROOT/envs/$ENV"
-DIND_CONTAINER_NAME="$USER.$ENV"
-
-# This is where Devstep's changes come in
-PROJECT_MAPPING=''
-BUILD_DIR='.'
-DOCKERFILE='Dockerfile'
-GIT_URL=''
-if [[ $ENV =~ 'github.com' ]]; then
-  GIT_URL="https://${ENV}.git"
-  ENV=$(echo $ENV | sed 's|/|-|g' | sed 's|github.com|gh|' | tr '[:upper:]' '[:lower:]')
-  ENV_IMAGE="$USER/$ENV"
-  ENV_ROOT="$USER_ROOT/envs/$ENV"
-  DIND_CONTAINER_NAME="$USER.$ENV"
-  DOCKERFILE='./code/Dockerfile.envy'
-  BUILD_DIR='./code'
-fi
-
-data-init() {
-  mkdir -p /data/users
-  cp /bin/envcmd /data/.envcmd
+root-init() {
+  mkdir -p /envy/users
+  cp /bin/envcmd /envy/.envcmd
 }
 
 user-init() {
-  if [[ ! -d "$USER_ROOT" ]]; then
-    mkdir -p "$USER_ROOT"
-    mkdir -p "$USER_ROOT/envs"
-    if $(wget -s $GH_ENVY_HOME &> /dev/null); then
-      git clone $GH_ENVY_HOME "$USER_ROOT/home"
-    else
-      mkdir -p "$USER_ROOT/home"
-    fi
-    cp -R /tmp/data/root "$USER_ROOT/root"
+  if [[ ! -d "/envy/users/$USER" ]]; then
+    mkdir -p "/envy/users/$USER"
+    mkdir -p "/envy/users/$USER/envs"
+    mkdir -p "/envy/users/$USER/home"
+    mkdir -p "/envy/users/$USER/root"
+    cp /tmp/data/home/.bashrc "/envy/users/$USER/home"
+    cp /tmp/data/home/.bashrc "/envy/users/$USER/root"
   fi
 }
 
 env-init() {
-  if [[ ! -d "$ENV_ROOT" ]]; then
-    cp -R /tmp/data/env "$ENV_ROOT"
+  if [[ ! -d "/envy/users/$USER/envs/$ENVIRON" ]]; then
+    cp -R /tmp/data/env "/envy/users/$USER/envs/$ENVIRON"
   fi
-
   env-docker
-  cd "$ENV_ROOT"
-  if ! docker history $ENV_IMAGE &> /dev/null; then
-    if [[ ! -d $ENV_ROOT/code ]] && [[ -n $GIT_URL ]]; then
-      git clone $GIT_URL $ENV_ROOT/code
-      if [[ ! -f $ENV_ROOT/code/Dockerfile.envy ]]; then
-        cp $ENV_ROOT/Dockerfile.devstep $ENV_ROOT/code/Dockerfile.envy
-      fi
-    fi
-
-    # HACK: For golang projects we need to keep .git around to avoid issues
-    # during build because of the way things are set up right now
-    if [[ -f $BUILD_DIR/.dockerignore ]]; then
-      sed 's|.git||g' $BUILD_DIR/.dockerignore -i.bkp
-      cp $BUILD_DIR/.dockerignore .
-    fi
-
+  cd "/envy/users/$USER/envs/$ENVIRON"
+  if ! docker history "$USER/$ENVIRON" &> /dev/null; then
     echo "Building environment ... "
-    # docker build -t $ENV_IMAGE -f $DOCKERFILE $BUILD_DIR &> /dev/null
-    docker build -t $ENV_IMAGE -f $DOCKERFILE $BUILD_DIR
-
-    if [[ -f $BUILD_DIR/.dockerignore.bkp ]]; then
-      mv $BUILD_DIR/.dockerignore{.bkp,}
-    fi
+    docker build -t "$USER/$ENVIRON" . &> /dev/null
   fi
 }
 
 env-docker() {
-  mkdir -p "$ENV_ROOT/run"
-  if ! docker diff $DIND_CONTAINER_NAME &> /dev/null; then
+  mkdir -p "/envy/users/$USER/envs/$ENVIRON/run"
+  if ! docker diff "$USER.$ENVIRON" &> /dev/null; then
     docker run -d --privileged \
-      --label "devstep-envy" \
-      --name $DIND_CONTAINER_NAME \
-      --hostname "$ENV" \
+      --name "$USER.$ENVIRON" \
+      --hostname "$ENVIRON" \
       --env PORT=2375 \
       --restart always \
-      --volume "$HOST_DATA/users/$USER/envs/$ENV/run:/var/run" \
+      --volume "$HOST_ROOT/users/$USER/envs/$ENVIRON/run:/var/run" \
       jpetazzo/dind > /dev/null
   fi
 }
@@ -118,56 +54,61 @@ env-session() {
   local status="128"
   set +e
   while [[ "$status" == "128" ]]; do
-    if [[ -f "$USER_ROOT/root/$session" ]]; then
-      read cmd args <<< "$(cat $USER_ROOT/root/$session)"
-      case "$cmd" in
-      *rebuild)
-        docker build -t "$ENV_IMAGE" -f $DOCKERFILE $BUILD_DIR
-        ;;
-      *switch)
-        echo "Switching to $args ... "
-        ENV="$args"
-        env-init
-        ;;
-      *commit)
-        echo "Committing to $args ... "
-        docker commit "$session" "$ENV_IMAGE" > /dev/null
-        ;;
-      esac
-      rm -f "$USER_ROOT/root/$session"
-    fi
+    session-reload-env "$session"
     docker rm -f "$session" &> /dev/null
+    export LAST_SESSION=$session
     docker run -it \
-      --label "devstep-envy" \
       --name "$session" \
-      --net "container:$DIND_CONTAINER_NAME" \
-      --env "HOSTNAME=$ENV" \
+      --net "container:$USER.$ENVIRON" \
+      --env "HOSTNAME=$ENVIRON" \
       --env "ENVY_SESSION=$session" \
       --env "ENVY_RANDOM=$RANDOM" \
+      --env "ENVY_USER=$USER" \
+      --env "ENV=/env/envyrc" \
       --env "DOCKER_HOST=unix:///env/run/docker.sock" \
-      --volume "$HOST_DATA/.envcmd:/sbin/reload:ro" \
-      --volume "$HOST_DATA/.envcmd:/sbin/rebuild:ro" \
-      --volume "$HOST_DATA/.envcmd:/sbin/switch:ro" \
-      --volume "$HOST_DATA/.envcmd:/sbin/commit:ro" \
-      --volume "$HOST_DATA/users/$USER/envs/$ENV:/env" \
-      --volume "$HOST_DATA/users/$USER/root:/root" \
-      --volume "$HOST_DATA/users/$USER/home:/home/$USER" \
-      --volume "$HOST_DATA:/admin" \
-      "$ENV_IMAGE" $(docker-cmd)
+      --volume "$HOST_ROOT/.envcmd:/sbin/reload:ro" \
+      --volume "$HOST_ROOT/.envcmd:/sbin/rebuild:ro" \
+      --volume "$HOST_ROOT/.envcmd:/sbin/switch:ro" \
+      --volume "$HOST_ROOT/.envcmd:/sbin/commit:ro" \
+      --volume "$HOST_ROOT/users/$USER/envs/$ENVIRON:/env" \
+      --volume "$HOST_ROOT/users/$USER/root:/root" \
+      --volume "$HOST_ROOT/users/$USER/home:/home/$USER" \
+      --volume "$HOST_ROOT:/envy" \
+      "$USER/$ENVIRON" $(docker-cmd "$USER/$ENVIRON")
     status=$?
   done
   docker rm -f "$session" > /dev/null
-  if [ "$THROWAWAY" = '1' ]; then
-    docker rmi "$ENV_IMAGE" > /dev/null
-  fi
   [[ "$status" == "128" ]] || exit "$status"
 }
 
+session-reload-env() {
+  declare session="$1"
+  if [[ -f "/envy/users/$USER/root/$session" ]]; then
+    read cmd args <<< "$(cat /envy/users/$USER/root/$session)"
+    case "$cmd" in
+    *rebuild)
+      docker build -t "$USER/$ENVIRON" .
+      ;;
+    *switch)
+      echo "Switching to $args ... "
+      ENVIRON="$args"
+      env-init
+      ;;
+    *commit)
+      echo "Committing to ${args:-$USER/$ENVIRON} ... "
+      docker commit "$session" "${args:-$USER/$ENVIRON}" > /dev/null
+      ;;
+    esac
+    rm -f "/envy/users/$USER/root/$session"
+  fi
+}
+
 docker-cmd() {
-  if [[ "$(docker inspect -f {{.Config.Cmd}} $ENV_IMAGE)" != "<no value>" ]]; then
+  declare image="$1"
+  if [[ "$(docker inspect -f {{.Config.Cmd}} $image)" != "<no value>" ]]; then
     return
   fi
-  if [[ "$(docker inspect -f {{.Config.Entrypoint}} $ENV_IMAGE)" != "<no value>" ]]; then
+  if [[ "$(docker inspect -f {{.Config.Entrypoint}} $image)" != "<no value>" ]]; then
     return
   fi
   echo "/bin/sh"
@@ -175,7 +116,11 @@ docker-cmd() {
 
 main() {
   set -e
-  data-init
+  : "${USER:?}" "${HOST_ROOT:?}"
+  IFS="+" read USER ENVIRON <<< "${USER:?}"
+  ENVIRON="${ENVIRON:-$USER}"
+
+  root-init
   user-init
   env-init
   env-session

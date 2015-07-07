@@ -13,7 +13,7 @@ reinstall:
 pristine:
 	docker rm -fv $$(docker ps -qa -f 'label=devstep-envy') || true
 	docker rmi $$(docker images -q -f 'label=devstep-envy') || true
-	docker run --rm -v /var/data/devstep-envy:/tmp/data \
+	docker run --rm -v /mnt/devstep-envy:/tmp/data \
 		alpine \
 		sh -c 'rm -rf /tmp/data/* && rm -f /tmp/data/.envcmd'
 
@@ -22,11 +22,11 @@ build:
 
 hack: build
 	docker run --rm --name devstep-envy.dev \
-		-v /tmp/data:/data \
+		-v /tmp/devstep-envy:/envy \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-p 8000:80 \
 		-p 2222:22 \
-		-e HOST_DATA=/tmp/data \
+		-e HOST_ROOT=/tmp/devstep-envy \
 		fgrehm/devstep-envy
 
 images: $(IMAGES)
