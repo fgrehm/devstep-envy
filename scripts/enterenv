@@ -41,6 +41,7 @@ env-docker() {
   if ! docker diff "$USER.$ENVIRON" &> /dev/null; then
     docker run -d --privileged \
       --name "$USER.$ENVIRON" \
+      --label "devstep-envy" \
       --hostname "$ENVIRON" \
       --env PORT=2375 \
       --restart always \
@@ -59,6 +60,7 @@ env-session() {
     export LAST_SESSION=$session
     docker run -it \
       --name "$session" \
+      --label "devstep-envy" \
       --net "container:$USER.$ENVIRON" \
       --env "HOSTNAME=$ENVIRON" \
       --env "ENVY_SESSION=$session" \
