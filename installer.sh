@@ -17,7 +17,7 @@ HOST_ROOT="${2:-/mnt/devstep-envy}"
 
 docker run -d -t --name devstep-envy \
   --restart="always" \
-  -v $HOST_DATA:/data \
+  -v $HOST_ROOT:/envy \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -p 80:80 \
   -p ${SSH_PORT}:22 \
