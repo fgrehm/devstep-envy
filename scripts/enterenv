@@ -71,15 +71,23 @@ env-init() {
 
 env-docker() {
   mkdir -p "/envy/users/$USER/envs/$ENVIRON/run"
+  mkdir -p "/envy/users/$USER/envs/$ENVIRON/docker"
   if ! docker diff "$USER.$ENVIRON" &> /dev/null; then
+    exposed_ports=''
+    if [[ -f /envy/users/$USER/envs/$ENVIRON/exposed-ports ]]; then
+      for port in $(cat /envy/users/$USER/envs/$ENVIRON/exposed-ports); do
+        exposed_ports="$exposed_ports --expose $port"
+      done
+    fi
     docker run -d --privileged \
+      --label "devstep-envy-env" \
       --name "$USER.$ENVIRON" \
-      --label "devstep-envy" \
       --hostname "$ENVIRON" \
-      --env PORT=2375 \
       --restart always \
+      --volume "$HOST_ROOT/users/$USER/envs/$ENVIRON/docker:/var/lib/docker" \
       --volume "$HOST_ROOT/users/$USER/envs/$ENVIRON/run:/var/run" \
-      jpetazzo/dind > /dev/null
+      $exposed_ports \
+      progrium/dind > /dev/null
   fi
 }
 
@@ -105,6 +113,7 @@ env-session() {
       --volume "$HOST_ROOT/.envcmd:/sbin/rebuild:ro" \
       --volume "$HOST_ROOT/.envcmd:/sbin/switch:ro" \
       --volume "$HOST_ROOT/.envcmd:/sbin/commit:ro" \
+      --volume "$HOST_ROOT/.envcmd:/sbin/expose:ro" \
       --volume "$HOST_ROOT/users/$USER/envs/$ENVIRON:/env" \
       --volume "$HOST_ROOT/users/$USER/root:/root" \
       --volume "$HOST_ROOT/users/$USER/home:/home/$USER" \
@@ -133,6 +142,11 @@ session-reload-env() {
       echo "Committing to ${args:-$USER/$ENVIRON} ... "
       docker commit "$session" "${args:-$USER/$ENVIRON}" > /dev/null
       ;;
+    *expose)
+      echo "Exposing $args ... "
+      docker rm -fv "$USER.$ENVIRON" || true
+      echo $args > /envy/users/$USER/envs/$ENVIRON/exposed-ports
+      env-docker
     esac
     rm -f "/envy/users/$USER/root/$session"
   fi
