@@ -21,6 +21,7 @@ user-init() {
   if [[ ! -d "/envy/users/$USER" ]]; then
     mkdir -p "/envy/users/$USER"
     mkdir -p "/envy/users/$USER/envs"
+    mkdir -p "/envy/users/$USER/workspaces"
     mkdir -p "/envy/users/$USER/root"
     cp /tmp/data/home/.bashrc "/envy/users/$USER/root"
 
@@ -38,34 +39,17 @@ env-init() {
     cp -R /tmp/data/env "/envy/users/$USER/envs/$ENVIRON"
   fi
   env-docker
+  if [[ -n "${GIT_URL}" ]]; then
+    if [[ ! -d /envy/users/$USER/workspaces/$ENVIRON ]]; then
+      git clone $GIT_URL /envy/users/$USER/workspaces/$ENVIRON
+    fi
+  else
+    mkdir -p /envy/users/$USER/workspaces/$ENVIRON
+  fi
   cd "/envy/users/$USER/envs/$ENVIRON"
   if ! docker history "$USER/$ENVIRON" &> /dev/null; then
-    if [[ -n "${GIT_URL}" ]] && [[ ! -d code ]]; then
-      git clone $GIT_URL code
-      if [[ ! -f code/Dockerfile.envy ]]; then
-        cp Dockerfile.devstep code/Dockerfile.envy
-      fi
-      cd code
-    fi
-    DOCKERFILE='Dockerfile'
-    if [[ -f Dockerfile.envy ]]; then
-      DOCKERFILE='Dockerfile.envy'
-      # HACK: For golang projects we need to keep .git around to avoid issues
-      # during build because of the way things are set up right now
-      if [[ -f .dockerignore ]]; then
-        sed 's|.git||g' .dockerignore -i.bkp
-        cp .dockerignore .
-      fi
-    fi
-
     echo "Building environment ... "
-    # docker build -t "$USER/$ENVIRON" -f $DOCKERFILE . #&> /dev/null
-    docker build -t "$USER/$ENVIRON" -f $DOCKERFILE . &> /dev/null
-
-    # HACK: See above for more
-    if [[ -f .dockerignore.bkp ]]; then
-      mv .dockerignore{.bkp,}
-    fi
+    docker build -t "$USER/$ENVIRON" . &> /dev/null
   fi
 }
 
@@ -115,6 +99,7 @@ env-session() {
       --volume "$HOST_ROOT/.envcmd:/sbin/commit:ro" \
       --volume "$HOST_ROOT/.envcmd:/sbin/expose:ro" \
       --volume "$HOST_ROOT/users/$USER/envs/$ENVIRON:/env" \
+      --volume "$HOST_ROOT/users/$USER/workspaces/$ENVIRON:/workspace" \
       --volume "$HOST_ROOT/users/$USER/root:/root" \
       --volume "$HOST_ROOT/users/$USER/home:/home/$USER" \
       --volume "$HOST_ROOT:/envy" \
