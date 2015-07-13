@@ -144,7 +144,7 @@ session-reload-env() {
       ;;
     *expose)
       echo "Exposing $args ... "
-      docker rm -fv "$USER.$ENVIRON" || true
+      docker rm -fv "$USER.$ENVIRON" > /dev/null || true
       echo $args > /envy/users/$USER/envs/$ENVIRON/exposed-ports
       env-docker
     esac
