@@ -14,13 +14,22 @@ root-init() {
 }
 
 user-init() {
+  # Not really needed to be defined as a variable but allows for injecting its value
+  # from outside (might be useful for testing purposes)
+  GH_ENVY_HOME=${GH_ENVY_HOME:-"https://github.com/$USER/envy.home.git"}
+
   if [[ ! -d "/envy/users/$USER" ]]; then
     mkdir -p "/envy/users/$USER"
     mkdir -p "/envy/users/$USER/envs"
-    mkdir -p "/envy/users/$USER/home"
     mkdir -p "/envy/users/$USER/root"
-    cp /tmp/data/home/.bashrc "/envy/users/$USER/home"
     cp /tmp/data/home/.bashrc "/envy/users/$USER/root"
+
+    if $(wget -s $GH_ENVY_HOME &> /dev/null); then
+      git clone $GH_ENVY_HOME "/envy/users/$USER/home"
+    else
+      mkdir -p "/envy/users/$USER/home"
+      cp /tmp/data/home/.bashrc "/envy/users/$USER/home"
+    fi
   fi
 }
 
