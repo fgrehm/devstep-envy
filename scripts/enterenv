@@ -68,6 +68,9 @@ env-docker() {
       --name "$USER.$ENVIRON" \
       --hostname "$ENVIRON" \
       --restart always \
+      --volume "$HOST_ROOT/users/$USER/root:/root" \
+      --volume "$HOST_ROOT/users/$USER/home:/home/$USER" \
+      --volume "$HOST_ROOT/users/$USER/workspaces/$ENVIRON:/workspace" \
       --volume "$HOST_ROOT/users/$USER/envs/$ENVIRON/docker:/var/lib/docker" \
       --volume "$HOST_ROOT/users/$USER/envs/$ENVIRON/run:/var/run" \
       $exposed_ports \
