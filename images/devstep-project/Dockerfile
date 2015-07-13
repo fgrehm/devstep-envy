@@ -1,7 +1,7 @@
 FROM fgrehm/devstep:v0.4.0
 
 # Speed things up by having the Docker binary around
-RUN sudo bash -c 'curl -sL https://get.docker.com/builds/Linux/x86_64/docker-latest > /usr/bin/docker' \
+RUN sudo bash -c 'curl -sL https://get.docker.com/builds/Linux/x86_64/docker-1.6.2 > /usr/bin/docker' \
     && sudo chmod +x /usr/bin/docker \
     && echo '#!/bin/bash' > $DEVSTEP_CONF/init.d/01-fix-docker-socket-permission.sh \
     && echo 'if [[ -S /env/run/docker.sock ]]; then' >> $DEVSTEP_CONF/init.d/01-fix-docker-socket-permission.sh \
