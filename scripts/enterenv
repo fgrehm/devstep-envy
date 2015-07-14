@@ -55,7 +55,7 @@ env-init() {
 
 env-docker() {
   mkdir -p "/envy/users/$USER/envs/$ENVIRON/run"
-  mkdir -p "/envy/users/$USER/envs/$ENVIRON/docker"
+  mkdir -p "/envy/users/$USER/docker/$ENVIRON"
   if ! docker diff "$USER.$ENVIRON" &> /dev/null; then
     exposed_ports=''
     if [[ -f /envy/users/$USER/envs/$ENVIRON/exposed-ports ]]; then
@@ -71,7 +71,7 @@ env-docker() {
       --volume "$HOST_ROOT/users/$USER/root:/root" \
       --volume "$HOST_ROOT/users/$USER/home:/home/$USER" \
       --volume "$HOST_ROOT/users/$USER/workspaces/$ENVIRON:/workspace" \
-      --volume "$HOST_ROOT/users/$USER/envs/$ENVIRON/docker:/var/lib/docker" \
+      --volume "$HOST_ROOT/users/$USER/docker/$ENVIRON:/var/lib/docker" \
       --volume "$HOST_ROOT/users/$USER/envs/$ENVIRON/run:/var/run" \
       $exposed_ports \
       progrium/dind > /dev/null
