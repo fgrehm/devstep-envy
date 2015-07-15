@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+
+cid="${1}"
+
+if [[ -z "${cid}" ]] ; then
+  echo 'Usage: unregister-container CONTAINER_ID'
+  exit 1
+fi
+
+rm -f "/etc/nginx/sites-enabled/${cid}.*.conf"

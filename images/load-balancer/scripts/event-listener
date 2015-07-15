@@ -1,0 +1,50 @@
+#!/bin/bash
+
+set -e
+
+nginx-reload() {
+  nginx -s reload
+}
+
+handle-start-event() {
+  cid="${1}"
+  # Is the container really up? Sometimes it might start and error right away
+  running=$(docker inspect -f '{{ .State.Running }}' ${cid} 2>/dev/null)
+
+  if [[ "${running}" = 'true' ]]; then
+    register-container $cid $DOMAIN
+    nginx-reload
+  fi
+}
+
+handle-die-event() {
+  unregister-container $1
+  nginx-reload
+}
+
+main() {
+  while read line; do
+    cid=$(echo $line | tr -d ':'  | cut -f2 -d' ')
+    event=$(echo $line | cut -f5 -d' ')
+
+    if [ "${DEBUG}" = '1' ]; then
+      echo "[DEBUG] Received '${event}' for '${cid}'"
+    fi
+
+    if ! $(docker inspect -f '{{ .Config.Labels }}' "${cid}" | grep -q devstep-envy-env); then
+      if [ "${DEBUG}" = '1' ]; then
+        echo "[DEBUG] '${cid}' is not labelled as a devstep-envy environment, skipping"
+      fi
+      continue
+    fi
+
+    case "$event" in
+      'start') handle-start-event $cid ;;
+      'die')   handle-die-event $cid ;;
+      *) echo "'${event}' is not processed"
+        ;;
+    esac
+  done
+}
+
+docker events -f 'event=start' -f 'event=die' | main

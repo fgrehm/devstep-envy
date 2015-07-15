@@ -1,0 +1,35 @@
+#!/bin/bash
+
+set -e
+set -x
+
+cid="${1}"
+domain="${2}"
+
+if [[ -z "${cid}" ]] || [[ -z "${domain}" ]]; then
+  echo 'Usage: register-container CONTAINER_ID DOMAIN'
+  exit 1
+fi
+
+exposed_ports=$(docker inspect -f '{{ json .Config.ExposedPorts }}' ${cid})
+if [[ "${exposed_ports}" = 'null' ]]; then
+  if [[ "${DEBUG}" = '1' ]]; then
+    echo "[DEBUG] No exposed ports found for '${cid}'"
+  fi
+  exit 0
+fi
+
+cid=$(docker inspect -f '{{ .Id }}' "${cid}")
+rm -f "/etc/nginx/sites-enabled/${cid}.*.conf"
+
+vhost=$(docker inspect -f '{{ .Name }}' ${cid} | sed 's|^/||')
+container_ip=$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $cid)
+for port in $(docker inspect -f "{{ json .Config.ExposedPorts }}" $cid | jq '. | keys | .[]' -r); do
+  port=$(echo $port | cut -f1 -d'/')
+  hostname="${port}-$(echo $vhost | sed 's|\.|-|g').${domain}"
+  echo "Registering '${cid}' as '${hostname}'"
+
+  sed "s|SERVER_NAME|${hostname}|g" /etc/nginx/proxy-template.conf > /etc/nginx/sites-enabled/${cid}.${port}.conf
+  sed -i "s|PROXY_PASS|${container_ip}:${port}|g" /etc/nginx/sites-enabled/${cid}.${port}.conf
+  cat /etc/nginx/sites-enabled/${cid}.${port}.conf
+done

@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e
+
+if [[ ! -S /var/run/docker.sock ]]; then
+  echo 'Docker socket not mounted inside the container'
+  exit 1
+fi
+
+if [[ -z "${DOMAIN}" ]]; then
+  echo 'DOMAIN is not set'
+  exit 1
+fi
+
+# Cleanup
+rm -f /etc/nginx/sites-enabled/*.conf
+
+echo 'Wiring up existing environments'
+for cid in $(docker ps --filter "label=devstep-envy-env" -q); do
+  register-container $cid "${DOMAIN}"
+done
+
+codep "/bin/event-listener" "/usr/sbin/nginx"
